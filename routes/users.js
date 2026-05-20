@@ -9,7 +9,8 @@ router.get('/:userId', auth, async (req, res) => {
     const user = await User.findById(req.params.userId)
       .select('-password')
       .populate('followers', 'username profilePicture')
-      .populate('following', 'username profilePicture');
+      .populate('following', 'username profilePicture')
+      .lean();
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -56,8 +57,10 @@ router.post('/:userId/follow', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cannot follow yourself' });
     }
 
-    const userToFollow = await User.findById(req.params.userId);
-    const currentUser = await User.findById(req.user.userId);
+    const [userToFollow, currentUser] = await Promise.all([
+      User.findById(req.params.userId),
+      User.findById(req.user.userId)
+    ]);
 
     if (!userToFollow || !currentUser) {
       return res.status(404).json({ message: 'User not found' });
@@ -86,8 +89,10 @@ router.post('/:userId/unfollow', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cannot unfollow yourself' });
     }
 
-    const userToUnfollow = await User.findById(req.params.userId);
-    const currentUser = await User.findById(req.user.userId);
+    const [userToUnfollow, currentUser] = await Promise.all([
+      User.findById(req.params.userId),
+      User.findById(req.user.userId)
+    ]);
 
     if (!userToUnfollow || !currentUser) {
       return res.status(404).json({ message: 'User not found' });
@@ -119,7 +124,8 @@ router.get('/search/:query', auth, async (req, res) => {
       ]
     })
     .select('-password')
-    .limit(10);
+    .limit(10)
+    .lean();
 
     res.json(users);
   } catch (error) {

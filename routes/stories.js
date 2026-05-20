@@ -17,10 +17,9 @@ router.post('/', auth, async (req, res) => {
 
     await story.save();
 
-    const populatedStory = await Story.findById(story._id)
-      .populate('user', 'username profilePicture');
+    await story.populate('user', 'username profilePicture');
 
-    res.status(201).json(populatedStory);
+    res.status(201).json(story);
   } catch (error) {
     res.status(500).json({ message: 'Error creating story', error: error.message });
   }
@@ -36,7 +35,8 @@ router.get('/feed', auth, async (req, res) => {
     })
     .sort({ createdAt: -1 })
     .populate('user', 'username profilePicture')
-    .populate('viewers.user', 'username profilePicture');
+    .populate('viewers.user', 'username profilePicture')
+    .lean();
 
     res.json(stories);
   } catch (error) {
@@ -53,7 +53,8 @@ router.get('/my-stories', auth, async (req, res) => {
       expiresAt: { $gt: new Date() }
     })
     .sort({ createdAt: -1 })
-    .populate('viewers.user', 'username profilePicture');
+    .populate('viewers.user', 'username profilePicture')
+    .lean();
 
     res.json(stories);
   } catch (error) {

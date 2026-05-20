@@ -16,7 +16,8 @@ router.get('/:userId', auth, async (req, res) => {
     .limit(50)
     .populate('sender', 'username profilePicture')
     .populate('recipient', 'username profilePicture')
-    .populate('replyTo');
+    .populate('replyTo')
+    .lean();
 
     res.json(messages.reverse());
   } catch (error) {
@@ -40,12 +41,13 @@ router.post('/', auth, async (req, res) => {
 
     await message.save();
 
-    const populatedMessage = await Message.findById(message._id)
-      .populate('sender', 'username profilePicture')
-      .populate('recipient', 'username profilePicture')
-      .populate('replyTo');
+    await message.populate([
+      { path: 'sender', select: 'username profilePicture' },
+      { path: 'recipient', select: 'username profilePicture' },
+      { path: 'replyTo' }
+    ]);
 
-    res.status(201).json(populatedMessage);
+    res.status(201).json(message);
   } catch (error) {
     res.status(500).json({ message: 'Error sending message', error: error.message });
   }
