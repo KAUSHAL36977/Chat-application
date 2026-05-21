@@ -18,7 +18,8 @@ router.post('/', auth, async (req, res) => {
     await story.save();
 
     const populatedStory = await Story.findById(story._id)
-      .populate('user', 'username profilePicture');
+      .populate('user', 'username profilePicture')
+      .lean();
 
     res.status(201).json(populatedStory);
   } catch (error) {
@@ -36,7 +37,8 @@ router.get('/feed', auth, async (req, res) => {
     })
     .sort({ createdAt: -1 })
     .populate('user', 'username profilePicture')
-    .populate('viewers.user', 'username profilePicture');
+    .populate('viewers.user', 'username profilePicture')
+    .lean();
 
     res.json(stories);
   } catch (error) {
@@ -53,7 +55,8 @@ router.get('/my-stories', auth, async (req, res) => {
       expiresAt: { $gt: new Date() }
     })
     .sort({ createdAt: -1 })
-    .populate('viewers.user', 'username profilePicture');
+    .populate('viewers.user', 'username profilePicture')
+    .lean();
 
     res.json(stories);
   } catch (error) {

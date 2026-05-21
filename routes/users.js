@@ -9,7 +9,8 @@ router.get('/:userId', auth, async (req, res) => {
     const user = await User.findById(req.params.userId)
       .select('-password')
       .populate('followers', 'username profilePicture')
-      .populate('following', 'username profilePicture');
+      .populate('following', 'username profilePicture')
+      .lean();
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -119,7 +120,8 @@ router.get('/search/:query', auth, async (req, res) => {
       ]
     })
     .select('-password')
-    .limit(10);
+    .limit(10)
+    .lean();
 
     res.json(users);
   } catch (error) {

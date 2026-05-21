@@ -16,7 +16,8 @@ router.get('/:userId', auth, async (req, res) => {
     .limit(50)
     .populate('sender', 'username profilePicture')
     .populate('recipient', 'username profilePicture')
-    .populate('replyTo');
+    .populate('replyTo')
+    .lean();
 
     res.json(messages.reverse());
   } catch (error) {
@@ -43,7 +44,8 @@ router.post('/', auth, async (req, res) => {
     const populatedMessage = await Message.findById(message._id)
       .populate('sender', 'username profilePicture')
       .populate('recipient', 'username profilePicture')
-      .populate('replyTo');
+      .populate('replyTo')
+      .lean();
 
     res.status(201).json(populatedMessage);
   } catch (error) {
