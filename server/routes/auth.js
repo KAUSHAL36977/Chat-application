@@ -12,7 +12,7 @@ router.post('/register', async (req, res) => {
     // Check if user already exists
     const existingUser = await User.findOne({ 
       $or: [{ email }, { username }] 
-    });
+    }).lean();
 
     if (existingUser) {
       if (existingUser.email === email) {
@@ -129,7 +129,7 @@ router.get('/validate', async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await User.findById(decoded.userId).select('-password').lean();
 
     if (!user) {
       return res.status(404).json({
