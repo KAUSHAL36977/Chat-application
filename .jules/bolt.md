@@ -1,3 +1,3 @@
-## 2024-05-24 - Use `.lean()` for Read-Only Mongoose Queries
-**Learning:** Mongoose queries return fully hydrated Mongoose documents by default, which have overhead for saving and document features such as getters/setters, virtuals, defaults, middleware, and instance methods. Using `.lean()` can improve performance for read-only queries, but it changes the returned value from a Mongoose document to a plain object.
-**Action:** Append `.lean()` to Mongoose read-only queries (`find`, `findOne`, `findById`) only when the response does not rely on Mongoose document features. If the response needs features such as virtuals or getters, either avoid `.lean()` or enable the required lean options where supported.
+## 2024-05-20 - Mongoose Query Performance Overhead
+**Learning:** Mongoose `findById().populate()` after saving a new document does a full DB roundtrip unnecessarily.
+**Action:** Use `await doc.populate(...)` directly on the saved document to skip the extra query.

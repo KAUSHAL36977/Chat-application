@@ -17,10 +17,9 @@ router.post('/', auth, async (req, res) => {
 
     await story.save();
 
-    const populatedStory = await Story.findById(story._id)
-      .populate('user', 'username profilePicture');
+    await story.populate('user', 'username profilePicture');
 
-    res.status(201).json(populatedStory);
+    res.status(201).json(story);
   } catch (error) {
     res.status(500).json({ message: 'Error creating story', error: error.message });
   }
