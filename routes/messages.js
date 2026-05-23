@@ -6,6 +6,8 @@ const auth = require('../middleware/auth');
 // Get messages between two users
 router.get('/:userId', auth, async (req, res) => {
   try {
+    // ⚡ Bolt: Added .lean() to read-only query for performance improvement
+    // This skips Mongoose document hydration, optimizing response time and memory for read-only JSON results
     const messages = await Message.find({
       $or: [
         { sender: req.user.userId, recipient: req.params.userId },
