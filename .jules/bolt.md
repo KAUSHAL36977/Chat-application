@@ -1,3 +1,3 @@
-## 2024-05-21 - Mongoose .lean() Optimization
-**Learning:** By default, Mongoose queries return full Mongoose documents, which include overhead like getters/setters and change tracking. For read-only operations where the document is immediately serialized to JSON, this overhead is wasted.
-**Action:** Always append `.lean()` to Mongoose queries (`find`, `findOne`, `findById`) that are strictly read-only and returned directly via an API response.
+## 2024-05-20 - Mongoose Query Performance Overhead
+**Learning:** Mongoose `findById().populate()` after saving a new document does a full DB roundtrip unnecessarily.
+**Action:** Use `await doc.populate(...)` directly on the saved document to skip the extra query.

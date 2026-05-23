@@ -6,6 +6,8 @@ const auth = require('../middleware/auth');
 // Get messages between two users
 router.get('/:userId', auth, async (req, res) => {
   try {
+    // ⚡ Bolt: Added .lean() to read-only query for performance improvement
+    // This skips Mongoose document hydration, optimizing response time and memory for read-only JSON results
     const messages = await Message.find({
       $or: [
         { sender: req.user.userId, recipient: req.params.userId },
@@ -41,13 +43,13 @@ router.post('/', auth, async (req, res) => {
 
     await message.save();
 
-    const populatedMessage = await Message.findById(message._id)
-      .populate('sender', 'username profilePicture')
-      .populate('recipient', 'username profilePicture')
-      .populate('replyTo')
-      .lean();
+    await message.populate([
+      { path: 'sender', select: 'username profilePicture' },
+      { path: 'recipient', select: 'username profilePicture' },
+      { path: 'replyTo' }
+    ]);
 
-    res.status(201).json(populatedMessage);
+    res.status(201).json(message);
   } catch (error) {
     res.status(500).json({ message: 'Error sending message', error: error.message });
   }
