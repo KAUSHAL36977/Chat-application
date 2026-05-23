@@ -29,6 +29,8 @@ router.post('/', auth, async (req, res) => {
 // Get stories from users you follow
 router.get('/feed', auth, async (req, res) => {
   try {
+    // ⚡ Bolt: Added .lean() to read-only query for performance improvement
+    // This reduces overhead by skipping Mongoose document hydration for JSON-only results
     const stories = await Story.find({
       user: { $in: req.user.following },
       isActive: true,
@@ -36,7 +38,8 @@ router.get('/feed', auth, async (req, res) => {
     })
     .sort({ createdAt: -1 })
     .populate('user', 'username profilePicture')
-    .populate('viewers.user', 'username profilePicture');
+    .populate('viewers.user', 'username profilePicture')
+    .lean();
 
     res.json(stories);
   } catch (error) {
@@ -47,13 +50,16 @@ router.get('/feed', auth, async (req, res) => {
 // Get user's own stories
 router.get('/my-stories', auth, async (req, res) => {
   try {
+    // ⚡ Bolt: Added .lean() to read-only query for performance improvement
+    // This reduces overhead by skipping Mongoose document hydration for JSON-only results
     const stories = await Story.find({
       user: req.user.userId,
       isActive: true,
       expiresAt: { $gt: new Date() }
     })
     .sort({ createdAt: -1 })
-    .populate('viewers.user', 'username profilePicture');
+    .populate('viewers.user', 'username profilePicture')
+    .lean();
 
     res.json(stories);
   } catch (error) {
