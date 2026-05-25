@@ -28,17 +28,23 @@ router.get('/:userId', auth, async (req, res) => {
 router.put('/profile', auth, async (req, res) => {
   try {
     const { username, bio, profilePicture } = req.body;
-    const user = await User.findById(req.user.userId);
+
+    const updateData = {};
+    if (username) updateData.username = username;
+    if (bio) updateData.bio = bio;
+    if (profilePicture) updateData.profilePicture = profilePicture;
+
+    // ⚡ Bolt: Replaced two-step findById+save with single atomic findByIdAndUpdate
+    // This minimizes database roundtrips and avoids full document hydration overhead
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $set: updateData },
+      { new: true, select: '-password', runValidators: true }
+    ).lean();
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
-    if (username) user.username = username;
-    if (bio) user.bio = bio;
-    if (profilePicture) user.profilePicture = profilePicture;
-
-    await user.save();
 
     res.json({
       id: user._id,
@@ -60,8 +66,8 @@ router.post('/:userId/follow', auth, async (req, res) => {
     }
 
     const [userToFollow, currentUser] = await Promise.all([
-      User.findById(req.params.userId),
-      User.findById(req.user.userId)
+      User.findById(req.params.userId).select('_id'),
+      User.findById(req.user.userId).select('following')
     ]);
 
     if (!userToFollow || !currentUser) {
@@ -73,10 +79,18 @@ router.post('/:userId/follow', auth, async (req, res) => {
       return res.status(400).json({ message: 'Already following this user' });
     }
 
-    currentUser.following.push(req.params.userId);
-    userToFollow.followers.push(req.user.userId);
-
-    await Promise.all([currentUser.save(), userToFollow.save()]);
+    // ⚡ Bolt: Replaced two-step save with atomic update operations
+    // This reduces database roundtrips and handles concurrency better than read-modify-write
+    await Promise.all([
+      User.updateOne(
+        { _id: req.user.userId },
+        { $addToSet: { following: req.params.userId } }
+      ),
+      User.updateOne(
+        { _id: req.params.userId },
+        { $addToSet: { followers: req.user.userId } }
+      )
+    ]);
 
     res.json({ message: 'Successfully followed user' });
   } catch (error) {
@@ -92,22 +106,26 @@ router.post('/:userId/unfollow', auth, async (req, res) => {
     }
 
     const [userToUnfollow, currentUser] = await Promise.all([
-      User.findById(req.params.userId),
-      User.findById(req.user.userId)
+      User.findById(req.params.userId).select('_id'),
+      User.findById(req.user.userId).select('_id')
     ]);
 
     if (!userToUnfollow || !currentUser) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    currentUser.following = currentUser.following.filter(
-      id => id.toString() !== req.params.userId
-    );
-    userToUnfollow.followers = userToUnfollow.followers.filter(
-      id => id.toString() !== req.user.userId
-    );
-
-    await Promise.all([currentUser.save(), userToUnfollow.save()]);
+    // ⚡ Bolt: Replaced two-step save with atomic update operations
+    // This minimizes database roundtrips and avoids array filtering in memory
+    await Promise.all([
+      User.updateOne(
+        { _id: req.user.userId },
+        { $pull: { following: req.params.userId } }
+      ),
+      User.updateOne(
+        { _id: req.params.userId },
+        { $pull: { followers: req.user.userId } }
+      )
+    ]);
 
     res.json({ message: 'Successfully unfollowed user' });
   } catch (error) {
