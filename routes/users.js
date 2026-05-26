@@ -28,17 +28,25 @@ router.get('/:userId', auth, async (req, res) => {
 router.put('/profile', auth, async (req, res) => {
   try {
     const { username, bio, profilePicture } = req.body;
-    const user = await User.findById(req.user.userId);
+
+    const updateData = {};
+    if (username !== undefined) updateData.username = username;
+    if (bio !== undefined) updateData.bio = bio;
+    if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
+
+    // ⚡ Bolt: Replaced two-step findById + save with single findByIdAndUpdate
+    // What: Using atomic findByIdAndUpdate with .lean() instead of fetching the full document and calling .save()
+    // Why: Eliminates full document hydration overhead and reduces database roundtrips from 2 to 1
+    // Impact: Reduces memory usage and improves response time for profile updates
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).lean();
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
-    if (username) user.username = username;
-    if (bio) user.bio = bio;
-    if (profilePicture) user.profilePicture = profilePicture;
-
-    await user.save();
 
     res.json({
       id: user._id,
