@@ -28,17 +28,24 @@ router.get('/:userId', auth, async (req, res) => {
 router.put('/profile', auth, async (req, res) => {
   try {
     const { username, bio, profilePicture } = req.body;
-    const user = await User.findById(req.user.userId);
+
+    // Build update object only with defined fields
+    const updateFields = {};
+    if (username) updateFields.username = username;
+    if (bio) updateFields.bio = bio;
+    if (profilePicture) updateFields.profilePicture = profilePicture;
+
+    // ⚡ Bolt: Replaced two-step findById + save with single atomic operation
+    // This minimizes database roundtrips and avoids full document hydration overhead
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    ).lean();
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
-    if (username) user.username = username;
-    if (bio) user.bio = bio;
-    if (profilePicture) user.profilePicture = profilePicture;
-
-    await user.save();
 
     res.json({
       id: user._id,
@@ -59,24 +66,35 @@ router.post('/:userId/follow', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cannot follow yourself' });
     }
 
-    const [userToFollow, currentUser] = await Promise.all([
-      User.findById(req.params.userId),
-      User.findById(req.user.userId)
+    // ⚡ Bolt: Replace findById + save with lightweight existence checks and atomic operations
+    // This avoids fully hydrating both user documents and limits database roundtrips
+    const [userToFollowExists, currentUserExists] = await Promise.all([
+      User.exists({ _id: req.params.userId }),
+      User.exists({ _id: req.user.userId })
     ]);
 
-    if (!userToFollow || !currentUser) {
+    if (!userToFollowExists || !currentUserExists) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if already following
-    if (currentUser.following.includes(req.params.userId)) {
+    // ⚡ Bolt: Use atomic updateOne with $addToSet to prevent duplicates and hydration overhead
+    const [currentUserUpdateResult] = await Promise.all([
+      User.updateOne(
+        { _id: req.user.userId },
+        { $addToSet: { following: req.params.userId } },
+        { runValidators: true }
+      ),
+      User.updateOne(
+        { _id: req.params.userId },
+        { $addToSet: { followers: req.user.userId } },
+        { runValidators: true }
+      )
+    ]);
+
+    // If no document was modified, the user was already following
+    if (currentUserUpdateResult.modifiedCount === 0) {
       return res.status(400).json({ message: 'Already following this user' });
     }
-
-    currentUser.following.push(req.params.userId);
-    userToFollow.followers.push(req.user.userId);
-
-    await Promise.all([currentUser.save(), userToFollow.save()]);
 
     res.json({ message: 'Successfully followed user' });
   } catch (error) {
@@ -91,23 +109,30 @@ router.post('/:userId/unfollow', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cannot unfollow yourself' });
     }
 
-    const [userToUnfollow, currentUser] = await Promise.all([
-      User.findById(req.params.userId),
-      User.findById(req.user.userId)
+    // ⚡ Bolt: Replace findById + save with lightweight existence checks and atomic operations
+    // This avoids fully hydrating both user documents and limits database roundtrips
+    const [userToUnfollowExists, currentUserExists] = await Promise.all([
+      User.exists({ _id: req.params.userId }),
+      User.exists({ _id: req.user.userId })
     ]);
 
-    if (!userToUnfollow || !currentUser) {
+    if (!userToUnfollowExists || !currentUserExists) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    currentUser.following = currentUser.following.filter(
-      id => id.toString() !== req.params.userId
-    );
-    userToUnfollow.followers = userToUnfollow.followers.filter(
-      id => id.toString() !== req.user.userId
-    );
-
-    await Promise.all([currentUser.save(), userToUnfollow.save()]);
+    // ⚡ Bolt: Use atomic updateOne with $pull to avoid full document hydration overhead
+    await Promise.all([
+      User.updateOne(
+        { _id: req.user.userId },
+        { $pull: { following: req.params.userId } },
+        { runValidators: true }
+      ),
+      User.updateOne(
+        { _id: req.params.userId },
+        { $pull: { followers: req.user.userId } },
+        { runValidators: true }
+      )
+    ]);
 
     res.json({ message: 'Successfully unfollowed user' });
   } catch (error) {
