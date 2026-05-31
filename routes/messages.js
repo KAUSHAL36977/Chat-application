@@ -111,18 +111,22 @@ router.post('/:messageId/reactions', auth, async (req, res) => {
 // Delete message
 router.delete('/:messageId', auth, async (req, res) => {
   try {
-    const message = await Message.findById(req.params.messageId);
-
-    if (!message) {
+    // ⚡ Bolt: Use a lean read for the existence/authorization check and a direct update for the soft delete.
+    // This avoids unnecessary document hydration while preserving the existing API contract (404 vs 403).
+    const existingMessage = await Message.findById(req.params.messageId).select('sender').lean();
+    if (!existingMessage) {
       return res.status(404).json({ message: 'Message not found' });
     }
 
-    if (message.sender.toString() !== req.user.userId) {
+    if (existingMessage.sender.toString() !== req.user.userId) {
       return res.status(403).json({ message: 'Not authorized to delete this message' });
     }
 
-    message.isDeleted = true;
-    await message.save();
+    // Now perform the atomic update
+    await Message.updateOne(
+      { _id: req.params.messageId },
+      { isDeleted: true }
+    );
 
     res.json({ message: 'Message deleted successfully' });
   } catch (error) {
