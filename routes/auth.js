@@ -61,10 +61,13 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Update online status
-    user.isOnline = true;
-    user.lastSeen = new Date();
-    await user.save();
+    // ⚡ Bolt: Replace user.save() with atomic updateOne
+    // This reduces hydration overhead and prevents potential race conditions on document save
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { isOnline: true, lastSeen: new Date() } },
+      { runValidators: true }
+    );
 
     // Generate JWT token
     const token = jwt.sign(
@@ -92,12 +95,13 @@ router.post('/logout', async (req, res) => {
   try {
     const userId = req.user.userId;
     
-    // ⚡ Bolt: Replaced findById + save with findByIdAndUpdate for performance
-    // This reduces database roundtrips and memory overhead by performing a direct atomic update
-    await User.findByIdAndUpdate(userId, {
-      isOnline: false,
-      lastSeen: new Date()
-    });
+    // ⚡ Bolt: Replace findById + save with single atomic findByIdAndUpdate
+    // This avoids document hydration and limits the operation to a single roundtrip
+    await User.findByIdAndUpdate(
+      userId,
+      { $set: { isOnline: false, lastSeen: new Date() } },
+      { runValidators: true }
+    );
 
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
