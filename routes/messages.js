@@ -111,8 +111,8 @@ router.post('/:messageId/reactions', auth, async (req, res) => {
 // Delete message
 router.delete('/:messageId', auth, async (req, res) => {
   try {
-    // ⚡ Bolt: Replaced findById + save with updateOne to reduce DB roundtrips and avoid document hydration.
-    // To preserve the existing API contract (404 vs 403), we first verify existence and authorization with lean()
+    // ⚡ Bolt: Use a lean read for the existence/authorization check and a direct update for the soft delete.
+    // This avoids unnecessary document hydration while preserving the existing API contract (404 vs 403).
     const existingMessage = await Message.findById(req.params.messageId).select('sender').lean();
     if (!existingMessage) {
       return res.status(404).json({ message: 'Message not found' });
