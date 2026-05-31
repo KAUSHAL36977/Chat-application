@@ -39,8 +39,10 @@ router.put('/profile', auth, async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.user.userId,
       { $set: updateData },
-      { new: true, select: '-password', runValidators: true }
-    ).lean();
+      { new: true, runValidators: true }
+    )
+      .select('-password')
+      .lean();
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
