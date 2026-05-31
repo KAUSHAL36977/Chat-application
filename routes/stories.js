@@ -97,8 +97,8 @@ router.post('/:storyId/view', auth, async (req, res) => {
 // Delete story
 router.delete('/:storyId', auth, async (req, res) => {
   try {
-    // ⚡ Bolt: Replaced findById + save with findOneAndUpdate to reduce DB roundtrips and avoid document hydration.
-    // To preserve the existing API contract (404 vs 403), we first verify existence and authorization with lean()
+    // ⚡ Bolt: Use a lean read for the existence/authorization check, then updateOne() for the soft delete.
+    // This preserves the existing API contract (404 vs 403) while avoiding full document hydration.
     const existingStory = await Story.findById(req.params.storyId).select('user').lean();
     if (!existingStory) {
       return res.status(404).json({ message: 'Story not found' });
