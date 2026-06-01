@@ -9,8 +9,12 @@ router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
-    if (existingUser) {
+    // ⚡ Bolt: Use .exists() instead of .findOne() for a lightweight existence check
+    // Why: Avoids full document hydration overhead when we only need a boolean result.
+    // Impact: Reduces DB memory footprint and speeds up the validation query.
+    // Measurement: Compare API response time and memory usage under concurrent registration load.
+    const userExists = await User.exists({ $or: [{ email }, { username }] });
+    if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
@@ -95,10 +99,10 @@ router.post('/logout', async (req, res) => {
   try {
     const userId = req.user.userId;
     
-    // ⚡ Bolt: Replace findById + save with single atomic findByIdAndUpdate
-    // This avoids document hydration and limits the operation to a single roundtrip
-    await User.findByIdAndUpdate(
-      userId,
+    // ⚡ Bolt: Replace findByIdAndUpdate with updateOne
+    // This avoids fetching the document back from the database when it is not needed.
+    await User.updateOne(
+      { _id: userId },
       { $set: { isOnline: false, lastSeen: new Date() } },
       { runValidators: true }
     );
