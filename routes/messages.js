@@ -84,25 +84,34 @@ router.put('/read/:senderId', auth, async (req, res) => {
 router.post('/:messageId/reactions', auth, async (req, res) => {
   try {
     const { emoji } = req.body;
-    const message = await Message.findById(req.params.messageId);
 
-    if (!message) {
+    // ⚡ Bolt: Replaced findById() + memory manipulation + save() with atomic operations
+    // Why: Eliminates full document hydration overhead and reduces potential race conditions during concurrent reactions.
+    // Impact: Significantly reduces memory footprint and optimizes database roundtrips by attempting an in-place update first.
+    // Measurement: Compare memory usage and response times for the reactions endpoint under concurrent load.
+
+    // First, attempt to push a new reaction ONLY if the user hasn't reacted yet.
+    // This prevents race conditions that could lead to duplicate reactions.
+    let updatedMessage = await Message.findOneAndUpdate(
+      { _id: req.params.messageId, 'reactions.user': { $ne: req.user.userId } },
+      { $push: { reactions: { user: req.user.userId, emoji } } },
+      { new: true, runValidators: true }
+    );
+
+    // If that returned null, the user already reacted, so we update the existing reaction.
+    if (!updatedMessage) {
+      updatedMessage = await Message.findOneAndUpdate(
+        { _id: req.params.messageId, 'reactions.user': req.user.userId },
+        { $set: { 'reactions.$.emoji': emoji } },
+        { new: true, runValidators: true }
+      );
+    }
+
+    if (!updatedMessage) {
       return res.status(404).json({ message: 'Message not found' });
     }
 
-    // Remove existing reaction from the same user
-    message.reactions = message.reactions.filter(
-      reaction => reaction.user.toString() !== req.user.userId
-    );
-
-    // Add new reaction
-    message.reactions.push({
-      user: req.user.userId,
-      emoji
-    });
-
-    await message.save();
-    res.json(message);
+    res.json(updatedMessage);
   } catch (error) {
     res.status(500).json({ message: 'Error adding reaction', error: error.message });
   }
