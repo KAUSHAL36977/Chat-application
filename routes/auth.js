@@ -9,7 +9,11 @@ router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    // ⚡ Bolt: Replace findOne with exists for existence check
+    // Why: exists() is faster as it only queries the _id field and avoids full document hydration
+    // Impact: Reduces query execution time and memory allocation during registration
+    // Measurement: Profile the registration endpoint memory usage and response time
+    const existingUser = await User.exists({ $or: [{ email }, { username }] });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
