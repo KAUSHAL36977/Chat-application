@@ -97,8 +97,10 @@ router.post('/login', async (req, res) => {
 // Logout user
 router.post('/logout', async (req, res) => {
   try {
-    const userId = req.user.userId;
-    
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'No authentication token, access denied' });
+    }
     // ⚡ Bolt: Replace findByIdAndUpdate with updateOne
     // This avoids fetching the document back from the database when it is not needed.
     await User.updateOne(
