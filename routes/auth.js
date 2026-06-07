@@ -96,12 +96,14 @@ router.post('/login', async (req, res) => {
 // Logout user
 router.post('/logout', async (req, res) => {
   try {
-    const userId = req.user.userId;
-    
-    // ⚡ Bolt: Replace findById + save with single atomic findByIdAndUpdate
-    // This avoids document hydration and limits the operation to a single roundtrip
-    await User.findByIdAndUpdate(
-      userId,
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'No authentication token, access denied' });
+    }
+    // ⚡ Bolt: Replace findByIdAndUpdate with updateOne
+    // This avoids fetching the document back from the database when it is not needed.
+    await User.updateOne(
+      { _id: userId },
       { $set: { isOnline: false, lastSeen: new Date() } },
       { runValidators: true }
     );
