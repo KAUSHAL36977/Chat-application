@@ -91,13 +91,13 @@ router.post('/login', async (req, res) => {
 router.post('/logout', async (req, res) => {
   try {
     const userId = req.user.userId;
-    const user = await User.findById(userId);
-    
-    if (user) {
-      user.isOnline = false;
-      user.lastSeen = new Date();
-      await user.save();
-    }
+    // ⚡ Bolt Performance Optimization:
+    // Replaced two-step read-then-write (findById + save) with a single atomic
+    // findByIdAndUpdate operation to minimize DB roundtrips and hydration overhead.
+    await User.findByIdAndUpdate(userId, {
+      isOnline: false,
+      lastSeen: new Date()
+    });
 
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
