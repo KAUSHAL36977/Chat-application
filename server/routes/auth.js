@@ -74,7 +74,11 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     // Check if user exists
-    const user = await User.findOne({ email });
+    // ⚡ Bolt: Added .lean() to read-only login query
+    // Why: The user document is only used for password verification and token generation. Mongoose document hydration is unnecessary overhead.
+    // Impact: Reduces query latency and memory footprint during the highly-frequent login operation.
+    // Measurement: Profile endpoint response time and memory usage under concurrent login load.
+    const user = await User.findOne({ email }).lean();
     if (!user) {
       return res.status(400).json({
         success: false,
