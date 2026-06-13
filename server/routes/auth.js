@@ -9,24 +9,26 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }] 
-    }).lean();
+    // ⚡ Bolt: Replaced User.findOne() with concurrent User.exists() checks
+    // Why: When only validating existence for registration, fetching and hydrating the full document is unnecessary overhead. Concurrent lightweight checks maintain specific error messages while reducing database roundtrip latency and memory usage.
+    // Impact: Faster database validation and reduced memory footprint during registration.
+    // Measurement: Compare DB query latency before and after on the register endpoint.
+    const [emailExists, usernameExists] = await Promise.all([
+      User.exists({ email }),
+      User.exists({ username })
+    ]);
 
-    if (existingUser) {
-      if (existingUser.email === email) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'A user with this email already exists' 
-        });
-      }
-      if (existingUser.username === username) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'This username is already taken' 
-        });
-      }
+    if (emailExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'A user with this email already exists'
+      });
+    }
+    if (usernameExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'This username is already taken'
+      });
     }
 
     // Hash password
