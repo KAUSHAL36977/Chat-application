@@ -10,23 +10,24 @@ router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if user already exists
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }] 
-    }).lean();
+    // Optimization: Use concurrent exists() checks instead of findOne() to reduce database projection payload and memory overhead
+    const [emailExists, usernameExists] = await Promise.all([
+      User.exists({ email }),
+      User.exists({ username })
+    ]);
 
-    if (existingUser) {
-      if (existingUser.email === email) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'A user with this email already exists' 
-        });
-      }
-      if (existingUser.username === username) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'This username is already taken' 
-        });
-      }
+    if (emailExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'A user with this email already exists'
+      });
+    }
+
+    if (usernameExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'This username is already taken'
+      });
     }
 
     // Hash password
