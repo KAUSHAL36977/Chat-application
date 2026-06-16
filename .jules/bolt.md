@@ -11,3 +11,6 @@
 ## 2026-06-03 - Atomic Array Updates & Avoiding Race Conditions
 **Learning:** Replacing a read-modify-write pattern with multiple atomic updates (e.g., trying an update and falling back to a push) can introduce TOCTOU race conditions where concurrent requests insert duplicate data, bypassing Mongoose's optimistic concurrency control.
 **Action:** When performing atomic upsert-like array operations, use query operators like `$ne` within the update query filter (`{ 'array.user': { $ne: req.user.userId } }`) to ensure duplicates cannot be pushed concurrently.
+## 2026-06-16 - Concurrent Mongoose Validations
+**Learning:** Checking for the existence of multiple fields concurrently using `Promise.all([Model.exists({ field1 }), Model.exists({ field2 })])` is more efficient in Mongoose than querying `Model.findOne({ $or: [...] })` as it entirely skips projection parsing and memory overhead associated with hydrating a result document.
+**Action:** Default to concurrent `.exists()` calls instead of large `$or` blocks for multi-field existence validation in endpoints like user registration.
