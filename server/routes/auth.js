@@ -9,19 +9,25 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
+    // ⚡ Bolt: Replaced User.findOne() with concurrent User.exists() calls
+    // Why: When validating existence, retrieving full documents via findOne is unnecessary overhead.
+    // Concurrent exists() reduces DB payload and improves endpoint latency.
+    // Impact: Faster database queries and lower memory usage for registration validation.
+    // Measurement: Compare DB query response times and memory usage during registration load testing.
     // Check if user already exists
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }] 
-    }).lean();
+    const [emailExists, usernameExists] = await Promise.all([
+      User.exists({ email }),
+      User.exists({ username })
+    ]);
 
-    if (existingUser) {
-      if (existingUser.email === email) {
+    if (emailExists || usernameExists) {
+      if (emailExists) {
         return res.status(400).json({ 
           success: false, 
           message: 'A user with this email already exists' 
         });
       }
-      if (existingUser.username === username) {
+      if (usernameExists) {
         return res.status(400).json({ 
           success: false, 
           message: 'This username is already taken' 
@@ -73,8 +79,12 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // ⚡ Bolt: Appended .lean() to User.findOne() for performance improvement
+    // Why: The login route only accesses primitive properties (_id, email, password, username) and doesn't call Mongoose document methods.
+    // Impact: Skips full document hydration overhead, reducing memory usage and saving processing time during login.
+    // Measurement: Compare memory usage and average login response time under load.
     // Check if user exists
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).lean();
     if (!user) {
       return res.status(400).json({
         success: false,
