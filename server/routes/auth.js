@@ -9,19 +9,23 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }] 
-    }).lean();
+    // ⚡ Bolt: Replaced findOne($or) with concurrent exists() checks
+    // Why: Reduces database projection payload, limits memory overhead, and allows DB to optimize index usage
+    // Impact: Faster validation for duplicate fields and lower application memory usage
+    // Measurement: Compare memory usage and response time for registration requests under load
+    const [emailExists, usernameExists] = await Promise.all([
+      User.exists({ email }),
+      User.exists({ username })
+    ]);
 
-    if (existingUser) {
-      if (existingUser.email === email) {
+    if (emailExists || usernameExists) {
+      if (emailExists) {
         return res.status(400).json({ 
           success: false, 
           message: 'A user with this email already exists' 
         });
       }
-      if (existingUser.username === username) {
+      if (usernameExists) {
         return res.status(400).json({ 
           success: false, 
           message: 'This username is already taken' 

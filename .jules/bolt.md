@@ -11,3 +11,7 @@
 ## 2026-06-03 - Atomic Array Updates & Avoiding Race Conditions
 **Learning:** Replacing a read-modify-write pattern with multiple atomic updates (e.g., trying an update and falling back to a push) can introduce TOCTOU race conditions where concurrent requests insert duplicate data, bypassing Mongoose's optimistic concurrency control.
 **Action:** When performing atomic upsert-like array operations, use query operators like `$ne` within the update query filter (`{ 'array.user': { $ne: req.user.userId } }`) to ensure duplicates cannot be pushed concurrently.
+
+## 2024-05-24 - Testing DB Logic in Sandbox Without Mongoose Error
+**Learning:** Testing DB endpoints without a connection by partially mocking `Model.exists` and `Model.prototype.save` runs into a block when loading express routes that `require` the `models/` file, which leads to `OverwriteModelError`.
+**Action:** In Node scripts mocking Mongoose to test endpoints without a real DB connection, override the `mongoose.model` compiler completely (e.g., `mongoose.model = function(name, schema) { if (name === 'User') return UserMock; ... }`) prior to importing the routes.
