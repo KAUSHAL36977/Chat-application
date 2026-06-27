@@ -11,3 +11,6 @@
 ## 2026-06-03 - Atomic Array Updates & Avoiding Race Conditions
 **Learning:** Replacing a read-modify-write pattern with multiple atomic updates (e.g., trying an update and falling back to a push) can introduce TOCTOU race conditions where concurrent requests insert duplicate data, bypassing Mongoose's optimistic concurrency control.
 **Action:** When performing atomic upsert-like array operations, use query operators like `$ne` within the update query filter (`{ 'array.user': { $ne: req.user.userId } }`) to ensure duplicates cannot be pushed concurrently.
+## 2024-06-27 - Mongoose Auth Routes & .lean()
+**Learning:** Auth routes are particularly risky for `.lean()` queries because they typically rely on instance methods like `user.comparePassword()` and virtuals like `user.id`.
+**Action:** When applying `.lean()` in auth routes, always carefully check exactly how the resulting `user` object is used, and refactor any instance method calls to use library equivalents (e.g. `bcrypt.compare`) instead.

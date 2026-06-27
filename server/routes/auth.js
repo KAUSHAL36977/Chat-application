@@ -74,7 +74,11 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     // Check if user exists
-    const user = await User.findOne({ email });
+    // ⚡ Bolt: Added .lean() to read-only query for performance improvement
+    // Why: The full user document is not modified in this route. .lean() returns plain JSON
+    // Impact: Avoids Mongoose document hydration, speeding up login query execution
+    // Measurement: Compare API response time for /login endpoint before and after
+    const user = await User.findOne({ email }).lean();
     if (!user) {
       return res.status(400).json({
         success: false,
