@@ -10,9 +10,13 @@ router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if user already exists
+    // ⚡ Bolt: Added explicit .select('email username') to minimize database payload size
+    // Why: We only need these two fields for the specific validation error messages.
+    // This avoids fetching unused fields like hashed password, createdAt, or lastLogin.
+    // Impact: Reduced database bandwidth and lower memory footprint per request.
     const existingUser = await User.findOne({ 
       $or: [{ email }, { username }] 
-    }).lean();
+    }).select('email username').lean();
 
     if (existingUser) {
       if (existingUser.email === email) {
