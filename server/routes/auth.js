@@ -9,10 +9,15 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
+    // ⚡ Bolt: Added strict query projection to the findOne check
+    // Why: When only checking for existence and returning specific fields for error messages,
+    // fetching and hydrating the full document is unnecessary overhead.
+    // Impact: Faster database query and reduced memory usage during registration.
+    // Measurement: Compare DB query latency before and after on the register endpoint.
     // Check if user already exists
     const existingUser = await User.findOne({ 
       $or: [{ email }, { username }] 
-    }).lean();
+    }).select('email username').lean();
 
     if (existingUser) {
       if (existingUser.email === email) {

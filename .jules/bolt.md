@@ -11,3 +11,6 @@
 ## 2026-06-03 - Atomic Array Updates & Avoiding Race Conditions
 **Learning:** Replacing a read-modify-write pattern with multiple atomic updates (e.g., trying an update and falling back to a push) can introduce TOCTOU race conditions where concurrent requests insert duplicate data, bypassing Mongoose's optimistic concurrency control.
 **Action:** When performing atomic upsert-like array operations, use query operators like `$ne` within the update query filter (`{ 'array.user': { $ne: req.user.userId } }`) to ensure duplicates cannot be pushed concurrently.
+## 2024-07-02 - Selective Query Projection
+**Learning:** For Mongoose `findOne` queries where the entire document is not required (e.g. for registration existence checking), using strict query projection like `.select('email username')` drastically reduces the data fetched and document memory size without needing any logic refactoring.
+**Action:** Always verify if `findOne()` results are entirely consumed. If only specific fields are needed, apply `.select()` early to avoid full-object overhead.
