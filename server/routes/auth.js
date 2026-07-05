@@ -9,10 +9,15 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
+    // ⚡ Bolt: Added lightweight projection .select('email username')
+    // Why: When checking if a user exists, we only need to verify specific fields.
+    // By selecting only these fields, we avoid fetching the entire document (including password hash, dates, etc.)
+    // Impact: Reduces database I/O, network transfer size, and memory allocation for the query result.
+    // Measurement: Observe reduced memory footprint and faster response times for the /register endpoint under load.
     // Check if user already exists
     const existingUser = await User.findOne({ 
       $or: [{ email }, { username }] 
-    }).lean();
+    }).select('email username').lean();
 
     if (existingUser) {
       if (existingUser.email === email) {
