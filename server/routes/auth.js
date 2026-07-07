@@ -10,9 +10,13 @@ router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if user already exists
+    // ⚡ Bolt: Added lightweight projection .select('email username')
+    // Why: We only need to verify if these specific fields exist for duplicate checking.
+    // Impact: Prevents Mongoose from hydrating the entire document from MongoDB.
+    // Measurement: Compare memory usage and API response times for registration of existing users.
     const existingUser = await User.findOne({ 
       $or: [{ email }, { username }] 
-    }).lean();
+    }).select('email username').lean();
 
     if (existingUser) {
       if (existingUser.email === email) {
