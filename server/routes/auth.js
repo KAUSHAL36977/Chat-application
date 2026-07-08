@@ -10,9 +10,12 @@ router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if user already exists
+    // ⚡ Bolt: Added explicit projection .select('email username')
+    // Why: When validating existence for specific error messages, fetching the full document creates unnecessary overhead.
+    // Impact: Minimizes data transfer from DB and reduces memory footprint for the query result.
     const existingUser = await User.findOne({ 
       $or: [{ email }, { username }] 
-    }).lean();
+    }).select('email username').lean();
 
     if (existingUser) {
       if (existingUser.email === email) {
@@ -129,7 +132,10 @@ router.get('/validate', async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    const user = await User.findById(decoded.userId).select('-password').lean();
+    // ⚡ Bolt: Changed projection from .select('-password') to strict inclusion .select('username email')
+    // Why: The API response only maps id, username, and email. Fetching the rest of the document wastes DB bandwidth and memory.
+    // Impact: Reduces DB payload size and memory allocation per validation request.
+    const user = await User.findById(decoded.userId).select('username email').lean();
 
     if (!user) {
       return res.status(404).json({

@@ -11,3 +11,6 @@
 ## 2026-06-03 - Atomic Array Updates & Avoiding Race Conditions
 **Learning:** Replacing a read-modify-write pattern with multiple atomic updates (e.g., trying an update and falling back to a push) can introduce TOCTOU race conditions where concurrent requests insert duplicate data, bypassing Mongoose's optimistic concurrency control.
 **Action:** When performing atomic upsert-like array operations, use query operators like `$ne` within the update query filter (`{ 'array.user': { $ne: req.user.userId } }`) to ensure duplicates cannot be pushed concurrently.
+## 2026-06-05 - Mongoose Query Projections
+**Learning:** For endpoints like duplicate validation checking or subset mapping where only specific fields are needed, replacing negative projections (e.g., `-password`) or fetching the full document with explicit inclusion projections (`.select('email username')`) reduces database bandwidth usage and minimizes application memory footprint.
+**Action:** When working with endpoints that only require a subset of fields, explicitly whitelist those fields in the Mongoose query projection instead of fetching the entire document.
