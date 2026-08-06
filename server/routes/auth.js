@@ -10,9 +10,10 @@ router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if user already exists
+    // Optimized: Only select fields needed for validation instead of full document
     const existingUser = await User.findOne({ 
       $or: [{ email }, { username }] 
-    }).lean();
+    }).select('email username').lean();
 
     if (existingUser) {
       if (existingUser.email === email) {

@@ -8,9 +8,12 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
-    if (existingUser) {
+    // ⚡ Bolt: Replace User.findOne() with User.exists()
+    // Why: When only checking for existence, fetching and hydrating the full document is unnecessary overhead.
+    // Impact: Faster database query and reduced memory usage during registration.
+    // Measurement: Compare DB query latency before and after on the register endpoint.
+    const userExists = await User.exists({ $or: [{ email }, { username }] });
+    if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
@@ -61,10 +64,13 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Update online status
-    user.isOnline = true;
-    user.lastSeen = new Date();
-    await user.save();
+    // ⚡ Bolt: Replace user.save() with atomic updateOne
+    // This reduces hydration overhead and prevents potential race conditions on document save
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { isOnline: true, lastSeen: new Date() } },
+      { runValidators: true }
+    );
 
     // Generate JWT token
     const token = jwt.sign(
@@ -90,14 +96,17 @@ router.post('/login', async (req, res) => {
 // Logout user
 router.post('/logout', async (req, res) => {
   try {
-    const userId = req.user.userId;
-    // ⚡ Bolt Performance Optimization:
-    // Replaced two-step read-then-write (findById + save) with a single atomic
-    // findByIdAndUpdate operation to minimize DB roundtrips and hydration overhead.
-    await User.findByIdAndUpdate(userId, {
-      isOnline: false,
-      lastSeen: new Date()
-    });
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'No authentication token, access denied' });
+    }
+    // ⚡ Bolt: Replace findByIdAndUpdate with updateOne
+    // This avoids fetching the document back from the database when it is not needed.
+    await User.updateOne(
+      { _id: userId },
+      { $set: { isOnline: false, lastSeen: new Date() } },
+      { runValidators: true }
+    );
 
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
