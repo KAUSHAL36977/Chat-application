@@ -11,3 +11,6 @@
 ## 2026-06-03 - Atomic Array Updates & Avoiding Race Conditions
 **Learning:** Replacing a read-modify-write pattern with multiple atomic updates (e.g., trying an update and falling back to a push) can introduce TOCTOU race conditions where concurrent requests insert duplicate data, bypassing Mongoose's optimistic concurrency control.
 **Action:** When performing atomic upsert-like array operations, use query operators like `$ne` within the update query filter (`{ 'array.user': { $ne: req.user.userId } }`) to ensure duplicates cannot be pushed concurrently.
+## 2024-08-08 - Safe replacement of instance .save()
+**Learning:** Replacing `this.save()` in Mongoose instance methods with `updateOne` is a massive optimization as it bypasses all pre/post hooks and full document validations. However, the local instance values must be explicitly mutated (e.g. `this.lastLogin = now`) immediately after the db query to ensure any downstream synchronous application logic still functions properly.
+**Action:** When refactoring instance methods to atomic db queries, always cache the new value to a variable, use the variable in the db query, and assign the variable to the local instance field.
