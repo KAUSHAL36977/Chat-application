@@ -46,7 +46,14 @@ userSchema.pre('save', function(next) {
 // Method to update last login
 userSchema.methods.updateLastLogin = async function() {
   this.lastLogin = new Date();
-  await this.save();
+  // ⚡ Bolt: Replaced this.save() with atomic updateOne
+  // Why: Avoids full document validation/hydration overhead for a simple date update.
+  // Impact: Faster login operations and reduced database roundtrips when updating last login.
+  // Measurement: Compare API response time on login before and after.
+  await this.model('User').updateOne(
+    { _id: this._id },
+    { $set: { lastLogin: this.lastLogin } }
+  );
 };
 
 const User = mongoose.model('User', userSchema);
