@@ -46,7 +46,14 @@ userSchema.pre('save', function(next) {
 // Method to update last login
 userSchema.methods.updateLastLogin = async function() {
   this.lastLogin = new Date();
-  await this.save();
+  // ⚡ Bolt: Replace this.save() with atomic updateOne()
+  // Why: Avoids full document hydration overhead and execution of pre-save middleware (which isn't needed here).
+  // Impact: Reduces database latency and memory usage for login updates.
+  // Measurement: Compare CPU/memory footprint during high-concurrency login scenarios.
+  await this.model('User').updateOne(
+    { _id: this._id },
+    { $set: { lastLogin: this.lastLogin } }
+  );
 };
 
 const User = mongoose.model('User', userSchema);
