@@ -46,7 +46,11 @@ userSchema.pre('save', function(next) {
 // Method to update last login
 userSchema.methods.updateLastLogin = async function() {
   this.lastLogin = new Date();
-  await this.save();
+  // Optimize: Avoid full document validation/save overhead for a single field update
+  await this.model('User').updateOne(
+    { _id: this._id },
+    { $set: { lastLogin: this.lastLogin } }
+  );
 };
 
 const User = mongoose.model('User', userSchema);
