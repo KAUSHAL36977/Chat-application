@@ -15,10 +15,10 @@ router.post('/register', async (req, res) => {
     // Impact: Faster database queries and lower memory usage for registration validation.
     // Measurement: Compare DB query response times and memory usage during registration load testing.
     // Check if user already exists
-    const [emailExists, usernameExists] = await Promise.all([
-      User.exists({ email }),
-      User.exists({ username })
-    ]);
+    // Optimized: Only select fields needed for validation instead of full document
+    const existingUser = await User.findOne({ 
+      $or: [{ email }, { username }] 
+    }).select('email username').lean();
 
     if (emailExists || usernameExists) {
       if (emailExists) {
