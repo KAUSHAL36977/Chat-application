@@ -46,10 +46,11 @@ userSchema.pre('save', function(next) {
 // Method to update last login
 userSchema.methods.updateLastLogin = async function() {
   this.lastLogin = new Date();
-  // Optimize: Avoid full document validation/save overhead for a single field update
+  // ⚡ Bolt: Use atomic updateOne to avoid save() middleware overhead during logins
   await this.model('User').updateOne(
     { _id: this._id },
-    { $set: { lastLogin: this.lastLogin } }
+    { $set: { lastLogin: this.lastLogin } },
+    { runValidators: true }
   );
 };
 
