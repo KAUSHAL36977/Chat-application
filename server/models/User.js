@@ -46,10 +46,7 @@ userSchema.pre('save', function(next) {
 // Method to update last login
 userSchema.methods.updateLastLogin = async function() {
   this.lastLogin = new Date();
-  // ⚡ Bolt: Replace this.save() with atomic updateOne()
-  // Why: Avoids full document hydration overhead and unnecessary pre-save middleware executions.
-  // Impact: Faster database update for a single field and reduced memory footprint.
-  // Measurement: Compare DB query latency before and after calling updateLastLogin.
+  // ⚡ Bolt: Use atomic updateOne to avoid save() middleware overhead during logins
   await this.model('User').updateOne(
     { _id: this._id },
     { $set: { lastLogin: this.lastLogin } },
