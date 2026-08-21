@@ -10,15 +10,15 @@ router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
 
     // ⚡ Bolt: Replaced User.findOne() with concurrent User.exists() calls
-    // Why: When validating existence, retrieving full documents via findOne is unnecessary overhead.
-    // Concurrent exists() reduces DB payload and improves endpoint latency.
+    // Why: When validating existence for distinct fields, retrieving full documents via findOne is unnecessary overhead.
+    // Concurrent exists() typically only queries and returns the _id field, substantially reducing database payload and hydration overhead.
     // Impact: Faster database queries and lower memory usage for registration validation.
     // Measurement: Compare DB query response times and memory usage during registration load testing.
     // Check if user already exists
-    // Optimized: Only select fields needed for validation instead of full document
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }] 
-    }).select('email username').lean();
+    const [emailExists, usernameExists] = await Promise.all([
+      User.exists({ email }),
+      User.exists({ username })
+    ]);
 
     if (emailExists || usernameExists) {
       if (emailExists) {

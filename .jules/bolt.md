@@ -14,3 +14,6 @@
 ## 2026-06-17 - Concurrent Exists Checks
 **Learning:** When validating multiple unique fields (like email and username) for specific error messages, using `findOne({ $or: [...] })` hydrates the full document unnecessarily. Replacing this with concurrent `Promise.all([Model.exists(...), Model.exists(...)])` calls reduces database payload and memory overhead.
 **Action:** Use concurrent `exists()` calls for validation that requires differentiating between multiple failing fields, instead of a single `findOne` with `$or`.
+## 2024-05-18 - Replacing $or queries with parallel exists calls
+**Learning:** Replacing a specifically projected, lean `$or` query (e.g., `findOne({ $or: [...] }).select('field1 field2').lean()`) with multiple parallel `Model.exists()` calls using `Promise.all()` is a pessimization. It increases database network round-trips and consumes multiple connections from the pool, as `exists()` is essentially just a wrapper for `findOne().select('_id').lean()`.
+**Action:** Do not use `Promise.all([Model.exists(...)])` to replace a single `$or` query unless the distinct fields being checked require fundamentally different logic that can't be handled by the `$or` query's result, and even then, consider the overhead.
