@@ -9,25 +9,22 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // ⚡ Bolt: Replaced User.findOne() with concurrent User.exists() calls
-    // Why: When validating existence, retrieving full documents via findOne is unnecessary overhead.
-    // Concurrent exists() reduces DB payload and improves endpoint latency.
-    // Impact: Faster database queries and lower memory usage for registration validation.
-    // Measurement: Compare DB query response times and memory usage during registration load testing.
     // Check if user already exists
-    // Optimized: Only select fields needed for validation instead of full document
+    // ⚡ Bolt: Select only fields needed for validation instead of full document
+    // Why: When validating existence, retrieving full documents via findOne is unnecessary overhead.
+    // Impact: Reduces DB payload and improves endpoint latency.
     const existingUser = await User.findOne({ 
       $or: [{ email }, { username }] 
     }).select('email username').lean();
 
-    if (emailExists || usernameExists) {
-      if (emailExists) {
+    if (existingUser) {
+      if (existingUser.email === email) {
         return res.status(400).json({ 
           success: false, 
           message: 'A user with this email already exists' 
         });
       }
-      if (usernameExists) {
+      if (existingUser.username === username) {
         return res.status(400).json({ 
           success: false, 
           message: 'This username is already taken' 
@@ -79,12 +76,11 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ⚡ Bolt: Appended .lean() to User.findOne() for performance improvement
-    // Why: The login route only accesses primitive properties (_id, email, password, username) and doesn't call Mongoose document methods.
-    // Impact: Skips full document hydration overhead, reducing memory usage and saving processing time during login.
-    // Measurement: Compare memory usage and average login response time under load.
+    // ⚡ Bolt: Use strict inclusion projection instead of fetching the entire document
+    // Why: The login route only requires email, password, and username. Using .select() prevents fetching unnecessary fields (like createdAt or lastLogin).
+    // Impact: Reduces database payload and memory footprint during login.
     // Check if user exists
-    const user = await User.findOne({ email }).lean();
+    const user = await User.findOne({ email }).select('password username email').lean();
     if (!user) {
       return res.status(400).json({
         success: false,

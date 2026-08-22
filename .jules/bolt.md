@@ -14,3 +14,6 @@
 ## 2026-06-17 - Concurrent Exists Checks
 **Learning:** When validating multiple unique fields (like email and username) for specific error messages, using `findOne({ $or: [...] })` hydrates the full document unnecessarily. Replacing this with concurrent `Promise.all([Model.exists(...), Model.exists(...)])` calls reduces database payload and memory overhead.
 **Action:** Use concurrent `exists()` calls for validation that requires differentiating between multiple failing fields, instead of a single `findOne` with `$or`.
+## 2026-06-21 - Mongoose Projection Optimizations
+**Learning:** Changing a broad exclusion projection (like `-password`) to a strict inclusion projection (like `username email`) is highly unsafe in routes that return documents, as it can inadvertently strip out fields expected by the frontend (like `roles` or `profilePicture`) even if those fields aren't explicitly referenced in the API's immediate mapping block.
+**Action:** When optimizing Mongoose query projections, avoid changing an exclusion projection to a strict inclusion projection. Code reviewers will flag this as a significant regression risk. Stick to exclusion projections unless the exact schema and frontend requirements are fully known.
