@@ -14,3 +14,6 @@
 ## 2026-06-17 - Concurrent Exists Checks
 **Learning:** When validating multiple unique fields (like email and username) for specific error messages, using `findOne({ $or: [...] })` hydrates the full document unnecessarily. Replacing this with concurrent `Promise.all([Model.exists(...), Model.exists(...)])` calls reduces database payload and memory overhead.
 **Action:** Use concurrent `exists()` calls for validation that requires differentiating between multiple failing fields, instead of a single `findOne` with `$or`.
+## 2026-06-25 - Removing Redundant Pre-Insert Existence Checks
+**Learning:** Checking for document existence via `findOne()` or `exists()` before performing an insert (e.g., registration) introduces an unnecessary database roundtrip on the happy path.
+**Action:** Remove explicit pre-insert existence checks entirely. Rely natively on MongoDB's unique index constraints (`E11000` duplicate key error) and handle them elegantly in the application's global error handler to eliminate 50% of the database latency for successful insertions.

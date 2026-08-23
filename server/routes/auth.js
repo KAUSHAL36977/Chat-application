@@ -9,31 +9,12 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // ⚡ Bolt: Replaced User.findOne() with concurrent User.exists() calls
-    // Why: When validating existence, retrieving full documents via findOne is unnecessary overhead.
-    // Concurrent exists() reduces DB payload and improves endpoint latency.
-    // Impact: Faster database queries and lower memory usage for registration validation.
-    // Measurement: Compare DB query response times and memory usage during registration load testing.
-    // Check if user already exists
-    // Optimized: Only select fields needed for validation instead of full document
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }] 
-    }).select('email username').lean();
-
-    if (emailExists || usernameExists) {
-      if (emailExists) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'A user with this email already exists' 
-        });
-      }
-      if (usernameExists) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'This username is already taken' 
-        });
-      }
-    }
+    // ⚡ Bolt: Removed redundant User.findOne() existence check before insertion
+    // Why: Checking for existence before insert introduces an unnecessary database roundtrip on the happy path.
+    // By relying natively on MongoDB's unique index constraints (E11000 duplicate key error)
+    // which are already caught by our errorHandler middleware, we eliminate this overhead.
+    // Impact: Reduces database queries for successful registrations by 50% (from 2 down to 1), improving latency and throughput.
+    // Measurement: Compare endpoint average response time and database QPS under registration load testing.
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
