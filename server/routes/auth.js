@@ -9,32 +9,6 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // ⚡ Bolt: Replaced User.findOne() with concurrent User.exists() calls
-    // Why: When validating existence, retrieving full documents via findOne is unnecessary overhead.
-    // Concurrent exists() reduces DB payload and improves endpoint latency.
-    // Impact: Faster database queries and lower memory usage for registration validation.
-    // Measurement: Compare DB query response times and memory usage during registration load testing.
-    // Check if user already exists
-    // Optimized: Only select fields needed for validation instead of full document
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }] 
-    }).select('email username').lean();
-
-    if (emailExists || usernameExists) {
-      if (emailExists) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'A user with this email already exists' 
-        });
-      }
-      if (usernameExists) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'This username is already taken' 
-        });
-      }
-    }
-
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -65,6 +39,25 @@ router.post('/register', async (req, res) => {
       }
     });
   } catch (error) {
+    // ⚡ Bolt: Rely natively on MongoDB's unique index constraint for existence checks
+    // Why: Pre-insert existence checks require unnecessary read queries. Catching the
+    // 11000 duplicate key error natively avoids a redundant DB roundtrip on the happy path.
+    // Impact: Reduces DB queries by 1 during successful registrations.
+    // Measurement: Monitor registration endpoint response times and database load.
+    if (error.code === 11000) {
+      if (error.keyPattern && error.keyPattern.email) {
+        return res.status(400).json({
+          success: false,
+          message: 'A user with this email already exists'
+        });
+      }
+      if (error.keyPattern && error.keyPattern.username) {
+        return res.status(400).json({
+          success: false,
+          message: 'This username is already taken'
+        });
+      }
+    }
     console.error('Registration error:', error);
     res.status(500).json({
       success: false,
