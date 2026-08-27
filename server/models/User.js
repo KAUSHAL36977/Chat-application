@@ -53,6 +53,11 @@ userSchema.methods.updateLastLogin = async function() {
   await this.model('User').updateOne(
     { _id: this._id },
     { $set: { lastLogin: this.lastLogin } }
+  // ⚡ Bolt: Use atomic updateOne to avoid save() middleware overhead during logins
+  await this.model('User').updateOne(
+    { _id: this._id },
+    { $set: { lastLogin: this.lastLogin } },
+    { runValidators: true }
   );
 };
 
