@@ -11,6 +11,9 @@
 ## 2026-06-03 - Atomic Array Updates & Avoiding Race Conditions
 **Learning:** Replacing a read-modify-write pattern with multiple atomic updates (e.g., trying an update and falling back to a push) can introduce TOCTOU race conditions where concurrent requests insert duplicate data, bypassing Mongoose's optimistic concurrency control.
 **Action:** When performing atomic upsert-like array operations, use query operators like `$ne` within the update query filter (`{ 'array.user': { $ne: req.user.userId } }`) to ensure duplicates cannot be pushed concurrently.
-## 2026-08-13 - Mongoose Instance Method Saves
-**Learning:** Calling `this.save()` inside an instance method triggers save middleware and validates the document, adding overhead even when only a single field changes.
-**Action:** Prefer a targeted atomic update (e.g., `updateOne({ _id: this._id }, { $set: { ... } })`) when you only need to persist specific fields and don’t need save middleware/validators.
+## 2026-06-17 - Concurrent Exists Checks
+**Learning:** When validating multiple unique fields (like email and username) for specific error messages, using `findOne({ $or: [...] })` hydrates the full document unnecessarily. Replacing this with concurrent `Promise.all([Model.exists(...), Model.exists(...)])` calls reduces database payload and memory overhead.
+**Action:** Use concurrent `exists()` calls for validation that requires differentiating between multiple failing fields, instead of a single `findOne` with `$or`.
+## 2024-05-24 - Registration Endpoint Duplicate Key Optimization
+**Learning:** Removing `Model.findOne()` pre-checks and relying on MongoDB's unique index constraint (error code `11000`) is a powerful optimization for registration endpoints, cutting database roundtrips on the happy path. However, when doing this, it is critical to handle the `11000` error *locally* within the route's catch block, parsing the `error.keyPattern` to preserve the original 400 Bad Request error contract. Simply passing it to `next(error)` will often trigger a generic 500 error if the global handler is not explicitly configured for client-friendly duplicate key responses.
+**Action:** When migrating from manual existence checks to database constraints, always verify the global error handler's capabilities. If it lacks specific support, parse the `11000` error locally in the route to ensure the API contract (status codes and messages) remains completely unchanged.
