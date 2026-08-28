@@ -50,7 +50,11 @@ function addMessageToUI(isOwnMessage, data){
       </li>
        `
 
-      messageContainer.innerHTML += element
+      // ⚡ Bolt: Replaced O(n²) innerHTML += with O(1) insertAdjacentHTML
+      // Why: innerHTML += forces the browser to parse and re-render the entire message list for every new message.
+      // Impact: Significantly reduces DOM manipulation time and prevents the UI from freezing as chat history grows.
+      // Measurement: Compare DOM rendering time and memory usage in browser dev tools for long chat histories.
+      messageContainer.insertAdjacentHTML('beforeend', element)
       scrollToBottom()
 }
 
