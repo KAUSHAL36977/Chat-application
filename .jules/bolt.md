@@ -1,0 +1,3 @@
+## 2024-05-18 - Redundant Mongoose pre-save Middleware
+**Learning:** If a Mongoose schema defines a field with a modifier property like `lowercase: true`, it automatically applies this transformation during casting and validation. Any custom `pre('save')` middleware hooks performing the exact same string transformation are completely redundant and add unnecessary function execution overhead during document saves.
+**Action:** When inspecting Mongoose schemas, check if pre-save hooks duplicate functionality already provided by schema modifiers. Remove them to eliminate unnecessary processing overhead.

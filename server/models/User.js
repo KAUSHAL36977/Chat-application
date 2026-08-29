@@ -35,13 +35,10 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ email: 1 });
 userSchema.index({ username: 1 });
 
-// Pre-save middleware to ensure email is lowercase
-userSchema.pre('save', function(next) {
-  if (this.isModified('email')) {
-    this.email = this.email.toLowerCase();
-  }
-  next();
-});
+// ⚡ Bolt: Removed redundant pre('save') middleware for converting email to lowercase.
+// Why: The schema already has `lowercase: true` on the email field (line 17), making this hook completely redundant.
+// Impact: Eliminates unnecessary function execution overhead and potential latency on every document save.
+// Measurement: Compare execution time of User.save() operations during load testing.
 
 // Method to update last login
 userSchema.methods.updateLastLogin = async function() {
