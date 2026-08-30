@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Email is required'],
     unique: true,
     trim: true,
+    // ⚡ Bolt: lowercase modifier inherently handles case transformation, making a pre('save') hook redundant
     lowercase: true,
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
@@ -34,14 +35,6 @@ const userSchema = new mongoose.Schema({
 // Add indexes for better query performance
 userSchema.index({ email: 1 });
 userSchema.index({ username: 1 });
-
-// Pre-save middleware to ensure email is lowercase
-userSchema.pre('save', function(next) {
-  if (this.isModified('email')) {
-    this.email = this.email.toLowerCase();
-  }
-  next();
-});
 
 // Method to update last login
 userSchema.methods.updateLastLogin = async function() {
